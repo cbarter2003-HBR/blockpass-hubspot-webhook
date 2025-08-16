@@ -1,0 +1,41 @@
+// /api/idenfy/start.js
+export default async function handler(req, res) {
+  try {
+    // Basic Auth with your iDenfy API key/secret
+    const auth = 'Basic ' + Buffer.from(
+      process.env.IDENFY_API_KEY + ':' + process.env.IDENFY_API_SECRET
+    ).toString('base64');
+
+    // Create a per-visitor clientId; you can also tie this to a cookie/session
+    const clientId = crypto.randomUUID();
+
+    // If you're using REDIRECT mode, you can pass successUrl/errorUrl here.
+    // If you plan to use IFRAMED UI, do NOT set success/error URLs. :contentReference[oaicite:7]{index=7}
+    const body = {
+      clientId,
+      // successUrl: process.env.SUCCESS_URL, // e.g., https://your.site/kyc/return
+      // errorUrl: process.env.ERROR_URL,
+      // callbackUrl: process.env.IDENFY_WEBHOOK_URL, // or set in dashboard
+    };
+
+    const resp = await fetch('https://ivs.idenfy.com/api/v2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': auth },
+      body: JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+      const t = await resp.text();
+      return res.status(resp.status).json({ error: 'token_failed', details: t });
+    }
+
+    const data = await resp.json(); // { authToken, scanRef, clientId, ... }
+    return res.status(200).json({
+      authToken: data.authToken,
+      scanRef:   data.scanRef,
+      clientId
+    });
+  } catch (e) {
+    return res.status(500).json({ error: 'server_error', message: e.message });
+  }
+}
