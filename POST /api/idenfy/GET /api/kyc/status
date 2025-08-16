@@ -1,0 +1,11 @@
+// /api/kyc/status.js
+export default async function handler(req, res) {
+  const scanRef = req.query.scanRef;
+  const status  = memoryStore.get(scanRef) || 'pending';
+  const approved = status === 'approved';
+
+  res.status(200).json({
+    status,
+    checkoutUrl: approved ? process.env.CHECKOUT_URL : null
+  });
+}
